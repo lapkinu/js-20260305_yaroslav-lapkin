@@ -4,17 +4,12 @@
  * @returns {object | undefined} - returns the new object or undefined if nothing did't pass
  */
 export function invertObj(obj) {
-  if (obj === null || obj === undefined) {
-    return obj;
+  if (obj == null) {
+    return;
   }
-  const resObj = {};
-  for (const [key, value] of Object.entries(obj)) {
-    if (value === undefined ||
-        (typeof value === 'object' && value !== null) ||
-        typeof value === 'function') {
-      continue;
-    }
-    resObj[value] = key;
-  }
-  return resObj;
+  return Object.fromEntries(
+    Object.entries(obj)
+      .filter(([, value]) => value !== undefined)
+      .map(([key, value]) => [value, key])
+  );
 }
