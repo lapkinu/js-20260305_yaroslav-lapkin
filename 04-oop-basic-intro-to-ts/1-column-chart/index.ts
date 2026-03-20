@@ -14,19 +14,23 @@ type SubElements = {
 };
 
 export default class ColumnChart {
-  data: number[];
-  label: string;
-  value: number ;
-  link?: string;
-  formatHeading: (value: number) => string;
-  element: HTMLElement | null = null;
-  subElements: SubElements = {};
-  chartHeight = 50;
-  
+  private data: number[];
+  private value: number;
+  private readonly label: string;
+  private readonly link?: string;
+  private readonly formatHeading: (value: number) => string;
+  private readonly chartHeight = 50;
+  public element: HTMLElement | null = null;
+  private subElements: SubElements = {};
 
-  constructor({data = [], label = "", value = 0, link, 
-    formatHeading = (value) => String(value)}: Options = {}) {
-    this.data = data;
+  constructor({
+    data = [],
+    label = "",
+    value = 0,
+    link,
+    formatHeading = (value) => String(value),
+  }: Options = {}) {
+    this.data = [...data];
     this.label = label;
     this.value = value;
     this.link = link;
@@ -34,7 +38,7 @@ export default class ColumnChart {
     this.render();
   }
 
-  getTemplate(): string {
+  private getTemplate(): string {
     return `
       <div class="column-chart ${this.data.length ? "" : "column-chart_loading"}" style="--chart-height: ${this.chartHeight}">
         <div class="column-chart__title">
@@ -50,56 +54,61 @@ export default class ColumnChart {
           </div>
         </div>
       </div>
-    `;
+      `.trim();
   }
 
-  getChartColumns(): string {
-     if (!this.data.length) {
-    return '';
-  }
-    const maxValue = Math.max(...this.data);
+  private getChartColumns(): string {
+    if (!this.data.length) {
+      return "";
+    }
+    const maxValue = Math.max(0, ...this.data);
     if (maxValue === 0) {
+      return this.data
+        .map(() => `<div style="--value: 0" data-tooltip="0%"></div>`)
+        .join("");
+    }
+    const scale = this.chartHeight / maxValue;
     return this.data
-      .map(() => `<div style="--value: 0" data-tooltip="0%"></div>`)
-      .join('');
-  }
-    return this.data
-      .map(item => {
-        const scale = this.chartHeight / maxValue;
+      .map((item) => {
         const value = Math.floor(item * scale);
-        const percent = ((item / maxValue) * 100).toFixed(0);
+        const percent = Math.round((item / maxValue) * 100);
         return `<div style="--value: ${value}" data-tooltip="${percent}%"></div>`;
       })
       .join("");
   }
 
-  getSubElements(element: HTMLElement): SubElements {
+  private getSubElements(element: HTMLElement): SubElements {
     const elements: SubElements = {};
     for (const subElement of element.querySelectorAll("[data-element]")) {
-      const name = (subElement as HTMLElement).dataset.element as keyof SubElements;
+      const name = (subElement as HTMLElement).dataset
+        .element as keyof SubElements;
       elements[name] = subElement as HTMLElement;
     }
     return elements;
   }
 
-  render(): void {
+  public render(): void {
     this.element = createElement(this.getTemplate());
     this.subElements = this.getSubElements(this.element);
   }
 
-  update(data: number[]): void {
-    this.data = data;
+  public update(data: number[], value = this.value): void {
+    this.data = [...data];
+    this.value = value;
     if (this.subElements.body) {
       this.subElements.body.innerHTML = this.getChartColumns();
     }
-    this.element?.classList.toggle("column-chart_loading", !data.length);
+    if (this.subElements.header) {
+      this.subElements.header.textContent = this.formatHeading(this.value);
+    }
+    this.element?.classList.toggle("column-chart_loading", !this.data.length);
   }
 
-  remove(): void {
+  public remove(): void {
     this.element?.remove();
   }
 
-  destroy(): void {
+  public destroy(): void {
     this.remove();
     this.element = null;
     this.subElements = {};
