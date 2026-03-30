@@ -38,30 +38,43 @@ export default class SortableTable {
     this.body = body;
   }
 
+  private generateRowsHtml(data: SortableTableData[]): string {
+    return data
+      .map((item) => {
+        const cellsHtml = this.headersConfig
+          .map((col) => {
+            const value = item[col.id];
+            if (col.template) {
+              return `<div class="sortable-table__cell">${col.template(value)}</div>`;
+            }
+            return `<div class="sortable-table__cell">${String(value)}</div>`;
+          })
+          .join("");
+        return `<div class="sortable-table__row">${cellsHtml}</div>`;
+      })
+      .join("");
+  }
+
   private getTableHeader(): HTMLElement {
     const header = document.createElement("div");
     header.className = "sortable-table__header sortable-table__row";
     header.setAttribute("data-element", "header");
 
-    for (const col of this.headersConfig) {
-      const cell = document.createElement("div");
-      cell.className = "sortable-table__cell";
-      cell.setAttribute("data-id", col.id);
-      cell.setAttribute("data-sortable", col.sortable ? "true" : "false");
-      if (col.sortable) {
-        cell.innerHTML = `
-          <span>${col.title}</span>
-          <span data-element="arrow" class="sortable-table__sort-arrow">
-            <span class="sort-arrow"></span>
-          </span>
-        `;
-      } else {
-        cell.innerHTML = `<span>${col.title}</span>`;
-      }
+    const cellsHtml = this.headersConfig
+      .map((col) => {
+        const arrowHtml = col.sortable
+          ? `<span data-element="arrow" class="sortable-table__sort-arrow"><span class="sort-arrow"></span></span>`
+          : "";
+        return `
+        <div class="sortable-table__cell" data-id="${col.id}" data-sortable="${col.sortable ? "true" : "false"}">
+        <span>${col.title}</span>
+        ${arrowHtml}
+      </div>
+    `;
+      })
+      .join("");
 
-      header.appendChild(cell);
-    }
-
+    header.innerHTML = cellsHtml;
     return header;
   }
 
@@ -69,35 +82,29 @@ export default class SortableTable {
     const body = document.createElement("div");
     body.className = "sortable-table__body";
     body.setAttribute("data-element", "body");
-
-    for (const item of this.data) {
-      const row = document.createElement("div");
-      row.className = "sortable-table__row";
-
-      for (const col of this.headersConfig) {
-        const value = item[col.id];
-        row.appendChild(this.getTableCell(col, value));
-      }
-
-      body.appendChild(row);
-    }
-
+    body.innerHTML = this.generateRowsHtml(this.data);
     return body;
   }
 
-  private getTableCell(
-    col: SortableTableHeader,
-    value: string | number,
-  ): HTMLElement {
-    const cell = document.createElement("div");
-    cell.className = "sortable-table__cell";
-    if (col.template) {
-      cell.innerHTML = col.template(value);
-    } else {
-      cell.textContent = String(value);
+  private updateBody(): void {
+    if (!this.body) return;
+    this.body.innerHTML = this.generateRowsHtml(this.data);
+  }
+
+  private updateHeader(field: string, order: SortOrder): void {
+    if (!this.header) {
+      return;
     }
 
-    return cell;
+    const headerCells = this.header.querySelectorAll(".sortable-table__cell");
+
+    headerCells.forEach((cell) => {
+      if (cell.getAttribute("data-id") === field) {
+        cell.setAttribute("data-order", order);
+      } else {
+        cell.removeAttribute("data-order");
+      }
+    });
   }
 
   public sort(field: string, order: SortOrder = "asc"): void {
@@ -126,32 +133,6 @@ export default class SortableTable {
 
     this.updateBody();
     this.updateHeader(field, order);
-  }
-
-  private updateBody(): void {
-    if (!this.body) {
-      return;
-    }
-
-    const newBody = this.getTableBody();
-    this.body.replaceWith(newBody);
-    this.body = newBody;
-  }
-
-  private updateHeader(field: string, order: SortOrder): void {
-    if (!this.header) {
-      return;
-    }
-
-    const headerCells = this.header.querySelectorAll(".sortable-table__cell");
-
-    headerCells.forEach((cell) => {
-      if (cell.getAttribute("data-id") === field) {
-        cell.setAttribute("data-order", order);
-      } else {
-        cell.removeAttribute("data-order");
-      }
-    });
   }
 
   public remove(): void {
